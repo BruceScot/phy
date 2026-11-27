@@ -26,6 +26,18 @@ def parse(path: pathlib.Path) -> dict:
     return info
 
 
+def stats(rows: list) -> list:
+    out = []
+    for key in ("来源", "类型", "状态"):
+        counts = {}
+        for r in rows:
+            counts[r[key]] = counts.get(r[key], 0) + 1
+        parts = "；".join(f"{k} {v}" for k, v in sorted(counts.items(), key=lambda x: -x[1]))
+        out.append(f"- **{key}**：{parts}")
+    out.append("")
+    return out
+
+
 def main() -> None:
     rows = [parse(p) for p in sorted(ENTRIES.glob("L*.md"))]
     lines = [
@@ -34,6 +46,11 @@ def main() -> None:
         "> 本文件由 `工具/生成索引.py` 自动生成，请勿手工编辑。",
         "",
         f"共 {len(rows)} 条。",
+        "",
+        "## 覆盖统计",
+        "",
+        *stats(rows),
+        "## 全部条目",
         "",
         "| 编号 | 名称 | 类型 | 状态 | 来源 | 置信度 | 可参考性 | 标签 |",
         "|---|---|---|---|---|---|---|---|",
