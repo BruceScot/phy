@@ -1,0 +1,331 @@
+<title>电磁波一个周期</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* 版式：示波器式的仪器面板。上方大幅三维波形，下方定点时间曲线，右侧读数与逐段解说。 */
+:root{
+  --bg:#f3f5f7; --panel:#ffffff; --ink:#17202b; --muted:#5b6876; --line:#d7dde4; --grid:#e8ecf0;
+  --e:#d1452a; --b:#1f6fbf; --u:#c98a10; --s:#1f8a5b; --obs:#7b4fc7; --seg:#eef1f5;
+  --display:"Noto Serif SC","Songti SC","STSong",serif;
+  --body:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e141b; --panel:#151d26; --ink:#e6ebf0; --muted:#93a1b0; --line:#2a3542; --grid:#1d2732;
+  --e:#ff7a5c; --b:#5aa8ff; --u:#f2b53a; --s:#4fd18f; --obs:#b392ff; --seg:#1a232e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e141b; --panel:#151d26; --ink:#e6ebf0; --muted:#93a1b0; --line:#2a3542; --grid:#1d2732;
+  --e:#ff7a5c; --b:#5aa8ff; --u:#f2b53a; --s:#4fd18f; --obs:#b392ff; --seg:#1a232e; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header h1{font-family:var(--display);font-size:clamp(1.5rem,3vw,2.1rem);margin:0;text-wrap:balance;letter-spacing:.02em}
+header p{margin:.3rem 0 0;color:var(--muted);max-width:70ch}
+.eq{font-family:var(--mono);font-size:.85em;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:1px 6px;white-space:nowrap}
+.controls{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.group{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.label{font-size:.75rem;letter-spacing:.08em;color:var(--muted)}
+button{font:inherit;font-size:.9rem;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:6px;padding:5px 11px;cursor:pointer}
+button:hover{border-color:var(--muted)}
+button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--obs);outline-offset:2px}
+.phase{flex:1 1 260px;display:flex;gap:10px;align-items:center;min-width:0}
+.phase input{flex:1;min-width:0;accent-color:var(--obs)}
+.phase output{font-family:var(--mono);font-variant-numeric:tabular-nums;min-width:4.5ch;text-align:right}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:16px}
+@media (max-width:860px){.main{grid-template-columns:minmax(0,1fr)}}
+.stage{display:flex;flex-direction:column;gap:16px;min-width:0}
+figure{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px 8px;min-width:0}
+figcaption{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin-bottom:4px}
+canvas{display:block;width:100%}
+.legend{display:flex;gap:14px;flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:14px;height:3px;border-radius:2px;display:inline-block}
+aside{display:flex;flex-direction:column;gap:16px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px}
+.seg-name{font-family:var(--display);font-size:1.25rem;margin:0 0 2px}
+.seg-time{font-family:var(--mono);font-size:.8rem;color:var(--muted)}
+.explain{margin:.6rem 0 0}
+.explain p{margin:.45rem 0}
+.read{display:grid;grid-template-columns:auto 1fr auto;gap:6px 10px;align-items:center;font-size:.88rem}
+.read .k{color:var(--muted)}
+.bar{height:6px;background:var(--grid);border-radius:3px;position:relative;overflow:hidden}
+.bar i{position:absolute;top:0;bottom:0;border-radius:3px}
+.read .v{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right;min-width:6ch}
+.note{font-size:.85rem;color:var(--muted)}
+.note b{color:var(--ink);font-weight:500}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>电磁波一个周期</h1>
+    <p>真空中沿 <span class="eq">+z</span> 传播的平面波。拖动相位或点击 A–D，观察观测点处电场、磁场与能量在一个周期内的四段变化；切换到驻波或圆偏振作对比。</p>
+  </header>
+
+  <div class="controls" role="group" aria-label="控制">
+    <div class="group">
+      <button id="play" aria-pressed="false">播放</button>
+    </div>
+    <div class="phase">
+      <span class="label">相位 ωt</span>
+      <input id="phase" type="range" min="0" max="360" step="1" value="30" aria-label="相位">
+      <output id="phaseOut" for="phase">30°</output>
+    </div>
+    <div class="group" aria-label="关键时刻">
+      <span class="label">跳到</span>
+      <button data-jump="0">A 0°</button><button data-jump="90">B 90°</button><button data-jump="180">C 180°</button><button data-jump="270">D 270°</button>
+    </div>
+    <div class="group" aria-label="波的类型">
+      <span class="label">类型</span>
+      <button id="mTrav" aria-pressed="true">行波</button><button id="mStand" aria-pressed="false">驻波</button>
+    </div>
+    <div class="group" aria-label="偏振">
+      <span class="label">偏振</span>
+      <button id="pLin" aria-pressed="true">线偏振</button><button id="pCirc" aria-pressed="false">圆偏振</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="stage">
+      <figure>
+        <figcaption>
+          <span>空间快照：两个波长内的场分布（竖直为 x，斜向为 y，水平向右为传播方向 z）</span>
+          <span class="legend"><span><i class="sw" style="background:var(--e)"></i>电场 E</span><span><i class="sw" style="background:var(--b)"></i>磁场 cB</span><span><i class="sw" style="background:var(--u)"></i>能量密度 u</span><span><i class="sw" style="background:var(--obs)"></i>观测点</span></span>
+        </figcaption>
+        <canvas id="space" height="330" aria-label="电磁波空间分布动画"></canvas>
+      </figure>
+      <figure>
+        <figcaption>
+          <span>观测点处一个周期的时间曲线（灰色分段为段 1–4）</span>
+          <span class="legend"><span><i class="sw" style="background:var(--e)"></i>Eₓ/E₀</span><span><i class="sw" style="background:var(--b)"></i>cB<sub>y</sub>/E₀（虚线）</span><span><i class="sw" style="background:var(--u)"></i>电能</span><span><i class="sw" style="background:var(--u);opacity:.45"></i>磁能（点线）</span><span><i class="sw" style="background:var(--s)"></i>能流 S</span></span>
+        </figcaption>
+        <canvas id="time" height="230" aria-label="观测点时间曲线"></canvas>
+      </figure>
+    </div>
+
+    <aside>
+      <div class="card" aria-live="polite">
+        <h2 class="seg-name" id="segName">段 1</h2>
+        <div class="seg-time" id="segTime">0 → T/4</div>
+        <div class="explain" id="segText"></div>
+      </div>
+      <div class="card">
+        <div class="read">
+          <span class="k">电场 Eₓ</span><div class="bar"><i id="bE"></i></div><span class="v" id="vE"></span>
+          <span class="k">磁场 cB<sub>y</sub></span><div class="bar"><i id="bB"></i></div><span class="v" id="vB"></span>
+          <span class="k">电能 u<sub>E</sub></span><div class="bar"><i id="bUE"></i></div><span class="v" id="vUE"></span>
+          <span class="k">磁能 u<sub>B</sub></span><div class="bar"><i id="bUB"></i></div><span class="v" id="vUB"></span>
+          <span class="k">能流 S<sub>z</sub></span><div class="bar"><i id="bS"></i></div><span class="v" id="vS"></span>
+        </div>
+        <p class="note" style="margin:.8rem 0 0">数值已归一化：场以 E₀ 为单位，能量以行波峰值 ε₀E₀² 为单位，能流以 cε₀E₀² 为单位。</p>
+      </div>
+      <div class="card note">
+        <b>看点</b>：行波中电场与磁场<b>同相</b>，电能与磁能每时每刻相等，能流始终向前；驻波中两者<b>相差 90°</b>，能量在电与磁之间来回转化，能流来回摆动。
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function(){
+  const TAU=Math.PI*2;
+  const state={phase:30,playing:false,mode:'trav',pol:'lin'};
+  const reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const $=id=>document.getElementById(id);
+  const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  // 场：z 以波长为单位，观测点 z0；返回 {ex,ey,bx,by}（b 已乘 c，以 E0 为单位）
+  const Z0=1.125;            // 观测点：1⅛ 个波长处（驻波中 E、B 都不为零）
+  function field(z,wt){
+    const k=TAU, zp=z-Z0;
+    if(state.mode==='trav'){
+      const p=k*zp-wt;
+      if(state.pol==='lin') return {ex:Math.cos(p),ey:0,bx:0,by:Math.cos(p)};
+      const ex=Math.cos(p), ey=Math.sin(p);
+      return {ex,ey,bx:-ey,by:ex};            // cB = z × E
+    }
+    // 驻波：节点位于 z0 - λ/8；E_x = √2 sin(kz') cos ωt，cB_y = -√2 cos(kz') sin ωt
+    const zn=zp+0.125, s=Math.SQRT2;
+    return {ex:s*Math.sin(k*zn)*Math.cos(wt),ey:0,bx:0,by:-s*Math.cos(k*zn)*Math.sin(wt)};
+  }
+  function energy(f){ // 以 ε0E0² 为单位
+    const uE=0.5*(f.ex*f.ex+f.ey*f.ey), uB=0.5*(f.bx*f.bx+f.by*f.by);
+    const S=f.ex*f.by-f.ey*f.bx;          // (E × cB)_z，以 cε0E0² 为单位
+    return {uE,uB,u:uE+uB,S};
+  }
+
+  // 解说
+  const TXT={
+    trav:{
+      A:['时刻 A：波峰经过','0','电场沿 +x、磁场沿 +y <b>同时达到最大</b>。能量密度最大，电能与磁能各占一半，能流以最大值向前。','观测点正在波峰上，空间坡度为零，所以两个场的变化率都为零：这一瞬间场"停"在最大值。'],
+      s1:['段 1：波峰离开','0 → T/4','波峰以光速向前移走，从身后滑过来的是数值更小的部分。电场和磁场<b>一起减小</b>，而且减小得越来越快。','前方的场比后方大（∂Eₓ/∂z &gt; 0），按法拉第定律磁场随之减小；按安培–麦克斯韦定律电场也减小。能量流出多于流入。'],
+      B:['时刻 B：节点经过','T/4','电场和磁场<b>同时为零</b>，此点能量密度和能流都为零。','这不是波消失了：观测点处在两团能量之间的空隙，此刻空间坡度最陡，场正以最快速度穿过零点、准备反向。'],
+      s2:['段 2：场反向增强','T/4 → T/2','电场变为沿 −x，磁场同时变为沿 −y，两者一起增大。','<b>能流方向不变</b>：(−x̂)×(−ŷ)=+ẑ。两个场一起反向，叉乘不变号，下一团能量正在到达。'],
+      C:['时刻 C：波谷经过','T/2','与 A 相同，只是电场和磁场都反向。能量密度再次最大。','一个周期内能量密度两次达到峰值：能量以 2ω 的频率一团一团地经过。'],
+      s3:['段 3：波谷离开','T/2 → 3T/4','与段 1 对称：两个场在负方向上一起减小，减小得越来越快。','能流仍沿 +z，能量密度由最大降到零。'],
+      D:['时刻 D：节点经过','3T/4','与 B 相同：两个场同时为零，变化率最大，这次是从负穿过零走向正。','能流瞬时为零，但方向从未改变。'],
+      s4:['段 4：回到波峰','3T/4 → T','两个场在正方向上一起增大，增大得越来越慢，到 T 时回到 A。','整个空间图样恰好前进了一个波长 λ = cT。']
+    },
+    stand:{
+      s1:['驻波 · 电能转为磁能','0 → T/4','镜面之间的驻波：观测点电场在减小，磁场在增大，<b>两者相差 90°</b>。','能流 S 不为零，能量正在流向邻近的"磁能区"。总能量在这一点（λ/8 处）恰好不变，只是在电与磁之间转换。'],
+      s2:['驻波 · 磁能转回电能','T/4 → T/2','磁场在 T/4 时最大、电场为零；随后电场反向增大、磁场减小。','能流反向：能量从磁能区流回电能区。驻波的图样不平移，节点不动，平均能流为零。'],
+      s3:['驻波 · 电能转为磁能','T/2 → 3T/4','与第一段相同，只是电场方向相反。','这就是"电场与磁场此消彼长"的情形，它属于驻波和 LC 振荡，不属于行波。'],
+      s4:['驻波 · 磁能转回电能','3T/4 → T','回到初始状态。','对比行波：行波中 E 与 B 同相，电能与磁能始终相等，能流只向前。']
+    },
+    circ:['圆偏振：没有能量团','整个周期','观测点的电场大小<b>不变</b>，方向匀速旋转；磁场始终与电场垂直并一起旋转。','能量密度和能流都不随时间变化。"能量一团一团地经过"是线偏振的特征，不是电磁波的普遍性质。']
+  };
+  function segKey(deg){
+    const near=(a)=>Math.abs(((deg-a+540)%360)-180)<=3;
+    if(near(0))return'A'; if(near(90))return'B'; if(near(180))return'C'; if(near(270))return'D';
+    const d=(deg%360+360)%360; return d<90?'s1':d<180?'s2':d<270?'s3':'s4';
+  }
+  function updateText(){
+    let t;
+    if(state.mode==='trav'&&state.pol==='circ') t=TXT.circ;
+    else if(state.mode==='trav') t=TXT.trav[segKey(state.phase)];
+    else { const d=(state.phase%360+360)%360; t=TXT.stand[d<90?'s1':d<180?'s2':d<270?'s3':'s4']; }
+    $('segName').textContent=t[0]; $('segTime').textContent=t[1];
+    $('segText').innerHTML='<p>'+t[2]+'</p><p>'+t[3]+'</p>';
+  }
+
+  // 画布
+  function fit(c){
+    if(!c.dataset.h){ c.dataset.h=c.getAttribute('height'); c.style.height=c.dataset.h+'px'; }
+    const dpr=window.devicePixelRatio||1, w=c.clientWidth, h=+c.dataset.h;
+    if(c.width!==Math.round(w*dpr)||c.height!==Math.round(h*dpr)){c.width=Math.round(w*dpr);c.height=Math.round(h*dpr);}
+    const g=c.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); return {g,w,h};
+  }
+  function arrowHead(g,x0,y0,x1,y1,size){
+    const a=Math.atan2(y1-y0,x1-x0); g.beginPath(); g.moveTo(x1,y1);
+    g.lineTo(x1-size*Math.cos(a-0.45),y1-size*Math.sin(a-0.45));
+    g.lineTo(x1-size*Math.cos(a+0.45),y1-size*Math.sin(a+0.45)); g.closePath(); g.fill();
+  }
+  function drawSpace(){
+    const c=$('space'),{g,w,h}=fit(c), wt=state.phase*Math.PI/180;
+    const col={e:css('--e'),b:css('--b'),u:css('--u'),s:css('--s'),obs:css('--obs'),ink:css('--ink'),muted:css('--muted'),line:css('--line'),grid:css('--grid')};
+    g.clearRect(0,0,w,h);
+    const narrow=w<520, left=narrow?34:56, right=narrow?18:36, axisY=narrow?128:140;
+    const L=w-left-right, A=narrow?62:78;         // 竖直振幅（像素）
+    const oy={x:-0.5,y:0.42};                       // y 轴的斜投影方向
+    const Zmax=2.25, X=z=>left+z/Zmax*L;
+    // 轴
+    g.strokeStyle=col.line; g.lineWidth=1;
+    g.beginPath(); g.moveTo(left,axisY); g.lineTo(left+L,axisY); g.stroke();
+    g.fillStyle=col.muted; arrowHead(g,left,axisY,left+L+8,axisY,7);
+    g.font='12px '+css('--mono'); g.fillText('z',left+L+10,axisY+4);
+    // 坐标示意
+    const ox=left-(narrow?16:30), oyy=axisY;
+    g.strokeStyle=col.muted; g.beginPath(); g.moveTo(ox,oyy); g.lineTo(ox,oyy-26); g.stroke(); arrowHead(g,ox,oyy,ox,oyy-28,5);
+    g.beginPath(); g.moveTo(ox,oyy); g.lineTo(ox+oy.x*30,oyy+oy.y*30); g.stroke(); arrowHead(g,ox,oyy,ox+oy.x*32,oyy+oy.y*32,5);
+    g.fillText('x',ox+4,oyy-22); g.fillText('y',ox+oy.x*32-10,oyy+oy.y*32+4);
+    // 波长刻度
+    g.fillStyle=col.muted; g.font='11px '+css('--mono');
+    for(let z=0;z<=2;z++){ g.fillRect(X(z),axisY-3,1,6); g.fillText(z===0?'0':z+'λ',X(z)-6,axisY+16); }
+    // 场矢量与包络
+    const N=narrow?54:90, pts=[];
+    for(let i=0;i<=N;i++){ const z=i/N*Zmax, f=field(z,wt); pts.push({z,f}); }
+    const proj=(z,vx,vy,s)=>({x:X(z)+vy*oy.x*s, y:axisY-vx*s+vy*oy.y*s});
+    // B（cB）
+    g.globalAlpha=0.55; g.strokeStyle=col.b; g.lineWidth=1.2;
+    pts.forEach(p=>{const q=proj(p.z,p.f.bx,p.f.by,A*0.82); g.beginPath(); g.moveTo(X(p.z),axisY); g.lineTo(q.x,q.y); g.stroke();});
+    g.globalAlpha=1; g.lineWidth=2; g.beginPath();
+    pts.forEach((p,i)=>{const q=proj(p.z,p.f.bx,p.f.by,A*0.82); i?g.lineTo(q.x,q.y):g.moveTo(q.x,q.y);}); g.stroke();
+    // E
+    g.globalAlpha=0.55; g.strokeStyle=col.e; g.lineWidth=1.2;
+    pts.forEach(p=>{const q=proj(p.z,p.f.ex,p.f.ey,A); g.beginPath(); g.moveTo(X(p.z),axisY); g.lineTo(q.x,q.y); g.stroke();});
+    g.globalAlpha=1; g.lineWidth=2; g.beginPath();
+    pts.forEach((p,i)=>{const q=proj(p.z,p.f.ex,p.f.ey,A); i?g.lineTo(q.x,q.y):g.moveTo(q.x,q.y);}); g.stroke();
+    // 能量密度条
+    const ub=h-(narrow?44:40), uh=narrow?26:30;
+    g.fillStyle=col.grid; g.fillRect(left,ub-uh,L,uh);
+    g.fillStyle=col.u; g.globalAlpha=0.85; g.beginPath(); g.moveTo(X(0),ub);
+    pts.forEach(p=>{const e=energy(p.f); g.lineTo(X(p.z),ub-Math.min(1,e.u)*uh);}); g.lineTo(X(Zmax),ub); g.closePath(); g.fill(); g.globalAlpha=1;
+    g.fillStyle=col.muted; g.font='11px '+css('--body'); g.fillText('能量密度 u(z)',left,ub+14);
+    // 观测点
+    const xo=X(Z0); g.strokeStyle=col.obs; g.setLineDash([4,4]); g.lineWidth=1.2;
+    g.beginPath(); g.moveTo(xo,14); g.lineTo(xo,ub); g.stroke(); g.setLineDash([]);
+    const fo=field(Z0,wt), eo=energy(fo);
+    const qe=proj(Z0,fo.ex,fo.ey,A), qb=proj(Z0,fo.bx,fo.by,A*0.82);
+    g.lineWidth=3; g.strokeStyle=col.e; g.fillStyle=col.e;
+    if(Math.hypot(qe.x-xo,qe.y-axisY)>4){g.beginPath(); g.moveTo(xo,axisY); g.lineTo(qe.x,qe.y); g.stroke(); arrowHead(g,xo,axisY,qe.x,qe.y,8);}
+    g.strokeStyle=col.b; g.fillStyle=col.b;
+    if(Math.hypot(qb.x-xo,qb.y-axisY)>4){g.beginPath(); g.moveTo(xo,axisY); g.lineTo(qb.x,qb.y); g.stroke(); arrowHead(g,xo,axisY,qb.x,qb.y,8);}
+    // 能流箭头
+    const sl=eo.S*(narrow?44:60);
+    if(Math.abs(sl)>3){ g.strokeStyle=col.s; g.fillStyle=col.s; g.lineWidth=3;
+      const sy=narrow?22:26; g.beginPath(); g.moveTo(xo,sy); g.lineTo(xo+sl,sy); g.stroke(); arrowHead(g,xo,sy,xo+sl+(sl>0?6:-6),sy,8);}
+    g.fillStyle=col.obs; g.font='12px '+css('--body');
+    g.fillText('观测点', xo+6, ub-uh-6);
+    if(Math.abs(sl)>3){ g.fillStyle=col.s; g.font='600 12px '+css('--mono'); g.fillText('S', xo+sl+(sl>0?10:-18), (narrow?22:26)+4); }
+  }
+  function drawTime(){
+    const c=$('time'),{g,w,h}=fit(c), deg=state.phase;
+    const col={e:css('--e'),b:css('--b'),u:css('--u'),s:css('--s'),obs:css('--obs'),muted:css('--muted'),line:css('--line'),seg:css('--seg'),ink:css('--ink')};
+    g.clearRect(0,0,w,h);
+    const left=40,right=12,top=14,bot=30, W=w-left-right, H=h-top-bot, mid=top+H/2;
+    const X=d=>left+d/360*W, Y=v=>mid-v*(H/2)*0.86;
+    // 分段底色
+    for(let s=0;s<4;s++){ if(s%2===0){ g.fillStyle=col.seg; g.fillRect(X(s*90),top,W/4,H);} }
+    g.fillStyle=col.muted; g.font='11px '+css('--body');
+    ['段1','段2','段3','段4'].forEach((t,i)=>g.fillText(t,X(i*90+45)-12,top+12));
+    // 轴
+    g.strokeStyle=col.line; g.lineWidth=1; g.beginPath(); g.moveTo(left,mid); g.lineTo(left+W,mid); g.stroke();
+    g.beginPath(); g.moveTo(left,top); g.lineTo(left,top+H); g.stroke();
+    g.font='11px '+css('--mono'); g.fillStyle=col.muted;
+    [['+1',1],['0',0],['−1',-1]].forEach(([t,v])=>g.fillText(t,left-24,Y(v)+4));
+    ['A','B','C','D','A'].forEach((t,i)=>{ const x=X(i*90); g.fillRect(x,top+H,1,4); g.fillText(t,x-(i===4?8:3),top+H+16); });
+    // 曲线
+    const series=[], N=240;
+    for(let i=0;i<=N;i++){ const d=i/N*360, f=field(Z0,d*Math.PI/180), e=energy(f); series.push({d,f,e}); }
+    const line=(fn,color,width,dash,alpha)=>{ g.strokeStyle=color; g.lineWidth=width; g.setLineDash(dash||[]); g.globalAlpha=alpha||1;
+      g.beginPath(); series.forEach((p,i)=>{const x=X(p.d),y=Y(fn(p)); i?g.lineTo(x,y):g.moveTo(x,y);}); g.stroke(); g.setLineDash([]); g.globalAlpha=1; };
+    line(p=>p.e.uE,col.u,3.2);
+    line(p=>p.e.uB,col.u,2,[2,4],0.7);
+    line(p=>p.e.S,col.s,1.6,[6,4]);
+    line(p=>p.f.ex,col.e,3.4);
+    line(p=>p.f.by,col.b,2,[7,5]);
+    // 光标
+    g.strokeStyle=col.obs; g.lineWidth=1.5; g.beginPath(); g.moveTo(X(deg),top); g.lineTo(X(deg),top+H); g.stroke();
+  }
+  function setBar(id,v,signed,color){
+    const el=$(id); el.style.background=color;
+    if(signed){ const x=Math.max(-1,Math.min(1,v)); el.style.left=(x<0?50+x*50:50)+'%'; el.style.width=Math.abs(x)*50+'%'; }
+    else { el.style.left='0'; el.style.width=Math.max(0,Math.min(1,v))*100+'%'; }
+  }
+  function updateRead(){
+    const f=field(Z0,state.phase*Math.PI/180), e=energy(f);
+    const fmt=v=>(v>=0?'+':'−')+Math.abs(v).toFixed(2);
+    const exv=state.pol==='circ'&&state.mode==='trav'?f.ex:f.ex, byv=f.by;
+    $('vE').textContent=fmt(exv); $('vB').textContent=fmt(byv);
+    $('vUE').textContent=e.uE.toFixed(2); $('vUB').textContent=e.uB.toFixed(2); $('vS').textContent=fmt(e.S);
+    setBar('bE',exv,true,css('--e')); setBar('bB',byv,true,css('--b'));
+    setBar('bUE',e.uE,false,css('--u')); setBar('bUB',e.uB,false,css('--u')); setBar('bS',e.S,true,css('--s'));
+    $('bUB').style.opacity='.5';
+  }
+  function render(){ $('phase').value=Math.round(state.phase)%361; $('phaseOut').textContent=Math.round(state.phase)+'°';
+    drawSpace(); drawTime(); updateRead(); updateText(); }
+
+  // 交互
+  let last=null;
+  function tick(ts){ if(!state.playing){last=null;return;} if(last!==null){ state.phase=(state.phase+(ts-last)*0.045)%360; } last=ts; render(); requestAnimationFrame(tick); }
+  function setPlay(on){ state.playing=on; $('play').setAttribute('aria-pressed',on); $('play').textContent=on?'暂停':'播放'; if(on)requestAnimationFrame(tick); }
+  $('play').addEventListener('click',()=>setPlay(!state.playing));
+  $('phase').addEventListener('input',e=>{ setPlay(false); state.phase=+e.target.value; render(); });
+  document.querySelectorAll('[data-jump]').forEach(b=>b.addEventListener('click',()=>{ setPlay(false); state.phase=+b.dataset.jump; render(); }));
+  function setMode(m){ state.mode=m; $('mTrav').setAttribute('aria-pressed',m==='trav'); $('mStand').setAttribute('aria-pressed',m==='stand');
+    if(m==='stand'){ state.pol='lin'; } $('pCirc').disabled=(m==='stand'); syncPol(); render(); }
+  function syncPol(){ $('pLin').setAttribute('aria-pressed',state.pol==='lin'); $('pCirc').setAttribute('aria-pressed',state.pol==='circ'); }
+  $('mTrav').addEventListener('click',()=>setMode('trav'));
+  $('mStand').addEventListener('click',()=>setMode('stand'));
+  $('pLin').addEventListener('click',()=>{state.pol='lin';syncPol();render();});
+  $('pCirc').addEventListener('click',()=>{ if(state.mode!=='trav')return; state.pol='circ';syncPol();render();});
+  window.addEventListener('resize',render);
+  try{ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',render); }catch(e){}
+  new MutationObserver(render).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+  if(document.fonts&&document.fonts.ready) document.fonts.ready.then(render);
+  render();
+  if(!reduce) setPlay(true);
+})();
+</script>
