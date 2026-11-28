@@ -1,0 +1,279 @@
+<title>天线近场与辐射场</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* 版式：左侧大幅子午面场图（像示波器屏幕），右侧分区说明、探针读数与三条径向曲线。 */
+:root{
+  --bg:#f3f5f7; --panel:#ffffff; --ink:#17202b; --muted:#5b6876; --line:#d7dde4; --grid:#e8ecf0;
+  --out:#d1452a; --in:#1f6fbf; --lines:#17202b; --ring1:#7b4fc7; --ring2:#1f8a5b; --plotbg:#fafbfc;
+  --display:"Noto Serif SC","Songti SC","STSong",serif;
+  --body:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e141b; --panel:#151d26; --ink:#e6ebf0; --muted:#93a1b0; --line:#2a3542; --grid:#1d2732;
+  --out:#ff7a5c; --in:#5aa8ff; --lines:#e6ebf0; --ring1:#b392ff; --ring2:#4fd18f; --plotbg:#111921; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e141b; --panel:#151d26; --ink:#e6ebf0; --muted:#93a1b0; --line:#2a3542; --grid:#1d2732;
+  --out:#ff7a5c; --in:#5aa8ff; --lines:#e6ebf0; --ring1:#b392ff; --ring2:#4fd18f; --plotbg:#111921; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1{font-family:var(--display);font-size:clamp(1.5rem,3vw,2.1rem);margin:0;letter-spacing:.02em;text-wrap:balance}
+header p{margin:.3rem 0 0;color:var(--muted);max-width:72ch}
+.controls{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.label{font-size:.75rem;letter-spacing:.08em;color:var(--muted)}
+button{font:inherit;font-size:.9rem;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:6px;padding:5px 11px;cursor:pointer}
+button:hover{border-color:var(--muted)}
+button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--ring1);outline-offset:2px}
+.phase{flex:1 1 260px;display:flex;gap:10px;align-items:center;min-width:0}
+.phase input{flex:1;min-width:0;accent-color:var(--ring1)}
+.phase output{font-family:var(--mono);font-variant-numeric:tabular-nums;min-width:4.5ch;text-align:right}
+.main{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px}
+@media (max-width:900px){.main{grid-template-columns:minmax(0,1fr)}}
+figure{margin:0;align-self:start;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-width:0}
+figcaption{font-size:.8rem;color:var(--muted);margin-bottom:6px;display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:space-between}
+.legend{display:flex;gap:12px;flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:14px;height:10px;border-radius:2px;display:inline-block}
+.ln{width:16px;height:0;border-top:2px dashed;display:inline-block}
+canvas{display:block;width:100%}
+#field{aspect-ratio:1/1;max-width:100%;touch-action:none;cursor:crosshair}
+.side{display:flex;flex-direction:column;gap:16px;min-width:0}
+.zones{display:grid;grid-template-columns:1fr;gap:8px}
+.zone{border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-size:.88rem}
+.zone[data-on="true"]{border-color:var(--ink)}
+.zone b{font-family:var(--display);font-weight:600}
+.zone .r{font-family:var(--mono);font-size:.78rem;color:var(--muted);margin-left:6px}
+.probe{font-family:var(--mono);font-size:.82rem;color:var(--muted);font-variant-numeric:tabular-nums;min-height:1.4em}
+.probe b{color:var(--ink);font-weight:600}
+.note{font-size:.85rem;color:var(--muted);margin:0}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>天线近场与辐射场</h1>
+    <p>竖直放置的振荡偶极天线（中心短线），图为过天线轴的截面，可切换 ±1.5 个波长或放大到 ±0.5 个波长。黑线是电场线；底色表示此刻能量沿半径流动的方向：<span style="color:var(--out)">红色向外</span>、<span style="color:var(--in)">蓝色向内</span>（已按 r² 补偿衰减）。把指针移到图上，可以看该处的读数。</p>
+  </header>
+
+  <div class="controls" role="group" aria-label="控制">
+    <button id="play" aria-pressed="false">播放</button>
+    <div class="phase">
+      <span class="label">相位 ωt</span>
+      <input id="phase" type="range" min="0" max="360" step="1" value="60" aria-label="相位">
+      <output id="phaseOut" for="phase">60°</output>
+    </div>
+    <span class="label">底色</span>
+    <button id="cFlow" aria-pressed="true">能量流向</button><button id="cNone" aria-pressed="false">关闭</button>
+    <span class="label">范围</span>
+    <button id="zWide" aria-pressed="true">±1.5λ</button><button id="zNear" aria-pressed="false">±0.5λ</button>
+  </div>
+
+  <div class="main">
+    <figure>
+      <figcaption>
+        <span class="legend"><span><i class="sw" style="background:var(--out)"></i>能量向外</span><span><i class="sw" style="background:var(--in)"></i>能量向内</span><span><i class="ln" style="border-color:var(--ring1)"></i>r = λ/2π</span><span><i class="ln" style="border-color:var(--ring2)"></i>r = λ</span></span>
+        <span class="probe" id="probe">指针移到图上查看读数</span>
+      </figcaption>
+      <canvas id="field" aria-label="偶极天线周围的电场线与能量流向"></canvas>
+    </figure>
+
+    <div class="side">
+      <figure>
+        <figcaption><span>三个区域（沿赤道方向）</span></figcaption>
+        <div class="zones">
+          <div class="zone" id="z1"><b>反应近场</b><span class="r">r &lt; λ/2π ≈ 0.16λ</span><br>1/r³ 项占主导。电场与磁场相差约 90°，能量每个周期流出又流回天线，平均不向外流。电场线两端都连在天线上。这里的场不是自由光子。</div>
+          <div class="zone" id="z2"><b>过渡区</b><span class="r">0.16λ – 1λ</span><br>三项大小相当，相位差逐渐由 90° 减小到 0。电场线在这里"掐断"，闭合成环，脱离天线。</div>
+          <div class="zone" id="z3"><b>辐射区</b><span class="r">r &gt; λ</span><br>1/r 项占主导。电场与磁场同相，能量只向外流。闭合的场线环以光速向外移动：这就是光子。</div>
+        </div>
+      </figure>
+      <figure>
+        <figcaption><span>电场三项的大小（赤道方向，对数刻度）</span></figcaption>
+        <canvas id="terms" height="170" aria-label="电场三项随距离的变化"></canvas>
+      </figure>
+      <figure>
+        <figcaption><span>电场与磁场的相位差</span></figcaption>
+        <canvas id="pdiff" height="150" aria-label="电场与磁场相位差随距离的变化"></canvas>
+      </figure>
+      <figure>
+        <figcaption><span>此刻沿赤道的能流 r²S（以向外平均值为 1，压缩刻度）</span></figcaption>
+        <canvas id="flux" height="170" aria-label="赤道方向瞬时能流随距离的变化"></canvas>
+      </figure>
+    </div>
+  </div>
+  <p class="note">计算采用赫兹偶极子的精确解：E<sub>θ</sub> ∝ sinθ(1/r³ − ik/r² − k²/r)e<sup>i(kr−ωt)</sup>，E<sub>r</sub> ∝ 2cosθ(1/r³ − ik/r²)e<sup>i(kr−ωt)</sup>，cB<sub>φ</sub> ∝ −sinθ(k²/r + ik/r²)e<sup>i(kr−ωt)</sup>。电场线是函数 sin²θ[sin(kr−ωt) + cos(kr−ωt)/(kr)] 的等值线。</p>
+</div>
+
+<script>
+(function(){
+  const TAU=Math.PI*2, K=TAU; let R=1.5;               // λ = 1，显示范围 ±1.5λ
+  const state={deg:60,playing:false,color:true};
+  const reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const $=id=>document.getElementById(id);
+  const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  function rgb(hex){ hex=hex.replace('#',''); if(hex.length===3)hex=hex.split('').map(c=>c+c).join(''); const n=parseInt(hex,16); return [n>>16&255,n>>8&255,n&255]; }
+
+  // 预计算网格
+  const N=181, F=new Float32Array(N*N), CK=new Float32Array(N*N), SK=new Float32Array(N*N), S2=new Float32Array(N*N), RR=new Float32Array(N*N);
+  function buildGrid(){ for(let j=0;j<N;j++)for(let i=0;i<N;i++){
+    const x=-R+2*R*i/(N-1), z=R-2*R*j/(N-1), r=Math.max(Math.hypot(x,z),1e-6), id=j*N+i;
+    RR[id]=r; CK[id]=Math.cos(K*r); SK[id]=Math.sin(K*r); S2[id]=(x*x)/(r*r);
+  } }
+  buildGrid();
+  const img=document.createElement('canvas'); img.width=N; img.height=N; const ig=img.getContext('2d'); const idata=ig.createImageData(N,N);
+
+  function fit(c,hAttr){
+    const dpr=window.devicePixelRatio||1, w=c.clientWidth;
+    const h=hAttr?hAttr:w;
+    if(hAttr&&!c.dataset.h){ c.dataset.h=hAttr; c.style.height=hAttr+'px'; }
+    if(c.width!==Math.round(w*dpr)||c.height!==Math.round(h*dpr)){c.width=Math.round(w*dpr);c.height=Math.round(h*dpr);}
+    const g=c.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); return {g,w,h};
+  }
+
+  // 赤道上的场（θ=90°），返回瞬时 Eθ、cBφ，以及归一化 r²S
+  function equator(r,wt){
+    const p=K*r-wt, c=Math.cos(p), s=Math.sin(p);
+    const Et=(1/(r*r*r)-K*K/r)*c+(K/(r*r))*s;
+    const cB=-((K*K/r)*c-(K/(r*r))*s);
+    return {Et,cB,flux:r*r*Et*cB/(K*K*K*K/2)};
+  }
+
+  function drawField(){
+    const c=$('field'),{g,w}=fit(c), wt=state.deg*Math.PI/180, cw=Math.cos(wt), sw=Math.sin(wt);
+    const out=rgb(css('--out')), inn=rgb(css('--in')), bg=rgb(css('--bg')), d=idata.data;
+    const K4=K*K*K*K/2;
+    for(let id=0;id<N*N;id++){
+      const r=RR[id], ck=CK[id], sk=SK[id];
+      const cp=ck*cw+sk*sw, sp=sk*cw-ck*sw;                       // cos, sin(kr-ωt)
+      F[id]=S2[id]*(sp+cp/(K*r));
+      let R0=bg[0],G0=bg[1],B0=bg[2];
+      if(state.color&&r>0.02){
+        const Et=(1/(r*r*r)-K*K/r)*cp+(K/(r*r))*sp, cB=-((K*K/r)*cp-(K/(r*r))*sp);
+        const v=S2[id]*r*r*Et*cB/K4, a=Math.tanh(Math.abs(v)/1.4)*0.85, col=v>=0?out:inn;
+        R0=bg[0]+(col[0]-bg[0])*a; G0=bg[1]+(col[1]-bg[1])*a; B0=bg[2]+(col[2]-bg[2])*a;
+      }
+      d[id*4]=R0; d[id*4+1]=G0; d[id*4+2]=B0; d[id*4+3]=255;
+    }
+    ig.putImageData(idata,0,0);
+    g.imageSmoothingEnabled=true; g.drawImage(img,0,0,w,w);
+    const sc=w/(N-1), X=i=>i*sc, P=r=>r/(2*R)*w, cx=w/2, cy=w/2;
+    // 环
+    g.lineWidth=1.4; g.setLineDash([5,5]);
+    g.strokeStyle=css('--ring1'); g.beginPath(); g.arc(cx,cy,P(1/TAU),0,TAU); g.stroke();
+    if(R>1){ g.strokeStyle=css('--ring2'); g.beginPath(); g.arc(cx,cy,P(1),0,TAU); g.stroke(); } g.setLineDash([]);
+    // 场线：等值线（行进方块）
+    g.strokeStyle=css('--lines'); g.lineWidth=1.3; g.globalAlpha=0.9; g.beginPath();
+    const levels=[0.12,0.3,0.5,0.72,0.95,1.3,1.8,2.6,3.8].flatMap(v=>[v,-v]);
+    for(const L of levels){
+      for(let j=0;j<N-1;j++)for(let i=0;i<N-1;i++){
+        const a=j*N+i, b=a+1, c2=a+N+1, d2=a+N;
+        if(RR[a]<0.012*R/0.5*0.5+0.015)continue;
+        const va=F[a]-L, vb=F[b]-L, vc=F[c2]-L, vd=F[d2]-L;
+        const k=(va>0?8:0)|(vb>0?4:0)|(vc>0?2:0)|(vd>0?1:0); if(k===0||k===15)continue;
+        const t=(p,q)=>p/(p-q);
+        const top=[X(i+t(va,vb)),X(j)], right=[X(i+1),X(j+t(vb,vc))], bot=[X(i+t(vd,vc)),X(j+1)], left=[X(i),X(j+t(va,vd))];
+        const seg=(p,q)=>{g.moveTo(p[0],p[1]);g.lineTo(q[0],q[1]);};
+        switch(k){case 1:case 14:seg(left,bot);break;case 2:case 13:seg(bot,right);break;case 3:case 12:seg(left,right);break;
+          case 4:case 11:seg(top,right);break;case 5:seg(left,top);seg(bot,right);break;case 6:case 9:seg(top,bot);break;
+          case 7:case 8:seg(left,top);break;case 10:seg(left,bot);seg(top,right);break;}
+      }
+    }
+    g.stroke(); g.globalAlpha=1;
+    // 天线与电荷
+    const q=Math.cos(wt), L2=Math.min(P(0.05),12);
+    g.strokeStyle=css('--muted'); g.lineWidth=3; g.beginPath(); g.moveTo(cx,cy-L2); g.lineTo(cx,cy+L2); g.stroke();
+    g.font='600 13px '+css('--mono'); g.textAlign='center';
+    if(Math.abs(q)>0.15){ g.fillStyle=css('--out'); g.fillText(q>0?'+':'−',cx+12,cy-L2+4); g.fillStyle=css('--in'); g.fillText(q>0?'−':'+',cx+12,cy+L2+8); }
+    g.textAlign='left'; g.font='12px '+css('--mono'); g.fillStyle=css('--ring1'); g.fillText('λ/2π',cx+P(1/TAU)*0.72+4,cy-P(1/TAU)*0.72-2);
+    if(R>1){ g.fillStyle=css('--ring2'); g.fillText('λ',cx+P(1)*0.72+4,cy-P(1)*0.72-2); }
+    g.fillStyle=css('--muted'); g.fillText('天线轴',cx+6,14);
+  }
+
+  function axes(g,w,h,pad,xmin,xmax,ymin,ymax,xlog,ylog,xt,yt){
+    const X=v=>pad.l+(xlog?(Math.log10(v)-Math.log10(xmin))/(Math.log10(xmax)-Math.log10(xmin)):(v-xmin)/(xmax-xmin))*(w-pad.l-pad.r);
+    const Y=v=>h-pad.b-(ylog?(Math.log10(v)-Math.log10(ymin))/(Math.log10(ymax)-Math.log10(ymin)):(v-ymin)/(ymax-ymin))*(h-pad.t-pad.b);
+    g.fillStyle=css('--plotbg'); g.fillRect(pad.l,pad.t,w-pad.l-pad.r,h-pad.t-pad.b);
+    g.strokeStyle=css('--grid'); g.lineWidth=1; g.fillStyle=css('--muted'); g.font='10.5px '+css('--mono');
+    xt.forEach(([v,t])=>{const x=X(v); g.beginPath(); g.moveTo(x,pad.t); g.lineTo(x,h-pad.b); g.stroke(); g.textAlign='center'; g.fillText(t,x,h-pad.b+13);});
+    yt.forEach(([v,t])=>{const y=Y(v); g.beginPath(); g.moveTo(pad.l,y); g.lineTo(w-pad.r,y); g.stroke(); g.textAlign='right'; g.fillText(t,pad.l-4,y+3);});
+    g.textAlign='left'; return {X,Y};
+  }
+  function vline(g,X,h,pad,v,color){ g.strokeStyle=color; g.setLineDash([4,4]); g.lineWidth=1.2; g.beginPath(); g.moveTo(X(v),pad.t); g.lineTo(X(v),h-pad.b); g.stroke(); g.setLineDash([]); }
+
+  function drawTerms(){
+    const c=$('terms'),{g,w,h}=fit(c,170), pad={l:40,r:24,t:10,b:22}; g.clearRect(0,0,w,h);
+    const {X,Y}=axes(g,w,h,pad,0.03,2,1e-1,1e5,true,true,[[0.05,'0.05λ'],[0.16,'0.16λ'],[0.5,'0.5λ'],[1,'λ'],[2,'2λ']],[[1,'1'],[100,'10²'],[1e4,'10⁴']]);
+    vline(g,X,h,pad,1/TAU,css('--ring1')); vline(g,X,h,pad,1,css('--ring2'));
+    const terms=[[r=>1/(r*r*r),css('--in'),'1/r³'],[r=>K/(r*r),css('--muted'),'k/r²'],[r=>K*K/r,css('--out'),'k²/r']];
+    terms.forEach(([f,col,lab],n)=>{ g.strokeStyle=col; g.lineWidth=2.2; g.beginPath();
+      for(let i=0;i<=120;i++){const r=0.03*Math.pow(2/0.03,i/120), v=Math.min(Math.max(f(r),0.1),1e5); i?g.lineTo(X(r),Y(v)):g.moveTo(X(r),Y(v));} g.stroke();
+      g.fillStyle=col; g.font='600 11px '+css('--mono'); const rr=n===0?0.06:n===1?0.5:1.4; g.fillText(lab,X(rr)+4,Y(Math.min(f(rr),9e4))-5); });
+  }
+  function drawPhase(){
+    const c=$('pdiff'),{g,w,h}=fit(c,150), pad={l:40,r:24,t:10,b:22}; g.clearRect(0,0,w,h);
+    const {X,Y}=axes(g,w,h,pad,0,1.5,0,90,false,false,[[0,'0'],[0.5,'0.5λ'],[1,'λ'],[1.5,'1.5λ']],[[0,'0°'],[45,'45°'],[90,'90°']]);
+    vline(g,X,h,pad,1/TAU,css('--ring1')); vline(g,X,h,pad,1,css('--ring2'));
+    g.strokeStyle=css('--ink'); g.lineWidth=2.2; g.beginPath();
+    for(let i=0;i<=150;i++){ const r=0.01+1.49*i/150;
+      const aRe=1/(r*r*r)-K*K/r, aIm=-K/(r*r), bRe=-K*K/r, bIm=-K/(r*r);
+      let dphi=(Math.atan2(aIm,aRe)-Math.atan2(bIm,bRe))*180/Math.PI; dphi=Math.abs(((dphi+540)%360)-180);
+      i?g.lineTo(X(r),Y(dphi)):g.moveTo(X(r),Y(dphi)); } g.stroke();
+  }
+  function drawFlux(){
+    const c=$('flux'),{g,w,h}=fit(c,170), pad={l:40,r:24,t:10,b:22}; g.clearRect(0,0,w,h);
+    const f=v=>Math.asinh(v/2)/Math.asinh(1);                    // 压缩刻度
+    const {X,Y}=axes(g,w,h,pad,0.08,1.5,f(-60),f(60),false,false,[[0.16,'0.16λ'],[0.5,'0.5λ'],[1,'λ'],[1.5,'1.5λ']],[[f(-50),'−50'],[f(-2),'−2'],[f(0),'0'],[f(2),'2'],[f(50),'50']]);
+    vline(g,X,h,pad,1/TAU,css('--ring1')); vline(g,X,h,pad,1,css('--ring2'));
+    g.strokeStyle=css('--muted'); g.setLineDash([2,3]); g.beginPath(); g.moveTo(X(0.08),Y(f(1))); g.lineTo(X(1.5),Y(f(1))); g.stroke(); g.setLineDash([]);
+    g.fillStyle=css('--muted'); g.font='10.5px '+css('--body'); g.fillText('平均值 = 1',X(1.12),Y(f(1))-5);
+    const wt=state.deg*Math.PI/180;
+    // 填充：正为向外、负为向内
+    for(const sign of [1,-1]){
+      g.fillStyle=sign>0?css('--out'):css('--in'); g.globalAlpha=0.35; g.beginPath(); g.moveTo(X(0.08),Y(f(0)));
+      for(let i=0;i<=220;i++){ const r=0.08+1.42*i/220, v=equator(r,wt).flux, vv=sign>0?Math.max(v,0):Math.min(v,0); g.lineTo(X(r),Y(f(Math.max(-60,Math.min(60,vv))))); }
+      g.lineTo(X(1.5),Y(f(0))); g.closePath(); g.fill(); g.globalAlpha=1;
+    }
+    g.strokeStyle=css('--ink'); g.lineWidth=1.8; g.beginPath();
+    for(let i=0;i<=220;i++){ const r=0.08+1.42*i/220, v=Math.max(-60,Math.min(60,equator(r,wt).flux)); i?g.lineTo(X(r),Y(f(v))):g.moveTo(X(r),Y(f(v))); } g.stroke();
+  }
+
+  // 探针
+  let probe=null;
+  function updateProbe(){
+    const el=$('probe');
+    ['z1','z2','z3'].forEach(z=>$(z).dataset.on='false');
+    if(!probe){ el.textContent='指针移到图上查看读数'; return; }
+    const r=probe.r, z=r<1/TAU?'z1':r<1?'z2':'z3'; $(z).dataset.on='true';
+    const aRe=1/(r*r*r)-K*K/r, aIm=-K/(r*r), bRe=-K*K/r, bIm=-K/(r*r);
+    let dphi=(Math.atan2(aIm,aRe)-Math.atan2(bIm,bRe))*180/Math.PI; dphi=Math.abs(((dphi+540)%360)-180);
+    const near=1/(r*r*r), rad=K*K/r;
+    el.innerHTML='r = <b>'+r.toFixed(2)+'λ</b>　近场/辐射项 = <b>'+(near/rad).toFixed(2)+'</b>　E–B 相位差 = <b>'+dphi.toFixed(0)+'°</b>';
+  }
+  $('field').addEventListener('pointermove',e=>{ const b=e.currentTarget.getBoundingClientRect();
+    const x=((e.clientX-b.left)/b.width*2-1)*R, z=(1-(e.clientY-b.top)/b.height*2)*R; probe={r:Math.max(0.02,Math.hypot(x,z))}; updateProbe(); });
+  $('field').addEventListener('pointerleave',()=>{probe=null;updateProbe();});
+
+  function render(){ $('phase').value=Math.round(state.deg)%361; $('phaseOut').textContent=Math.round(state.deg)+'°';
+    drawField(); drawFlux(); }
+  function renderAll(){ drawTerms(); drawPhase(); render(); updateProbe(); }
+
+  let last=null;
+  function tick(ts){ if(!state.playing){last=null;return;} if(last!==null) state.deg=(state.deg+(ts-last)*0.03)%360; last=ts; render(); requestAnimationFrame(tick); }
+  function setPlay(on){ state.playing=on; $('play').setAttribute('aria-pressed',on); $('play').textContent=on?'暂停':'播放'; if(on)requestAnimationFrame(tick); }
+  $('play').addEventListener('click',()=>setPlay(!state.playing));
+  $('phase').addEventListener('input',e=>{ setPlay(false); state.deg=+e.target.value; render(); });
+  $('cFlow').addEventListener('click',()=>{state.color=true;$('cFlow').setAttribute('aria-pressed','true');$('cNone').setAttribute('aria-pressed','false');render();});
+  function setZoom(z){ R=z; buildGrid(); $('zWide').setAttribute('aria-pressed',z>1); $('zNear').setAttribute('aria-pressed',z<1); render(); }
+  $('zWide').addEventListener('click',()=>setZoom(1.5));
+  $('zNear').addEventListener('click',()=>setZoom(0.5));
+  $('cNone').addEventListener('click',()=>{state.color=false;$('cFlow').setAttribute('aria-pressed','false');$('cNone').setAttribute('aria-pressed','true');render();});
+  window.addEventListener('resize',renderAll);
+  try{ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',renderAll); }catch(e){}
+  new MutationObserver(renderAll).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+  if(document.fonts&&document.fonts.ready) document.fonts.ready.then(renderAll);
+  renderAll();
+  if(!reduce) setPlay(true);
+})();
+</script>
